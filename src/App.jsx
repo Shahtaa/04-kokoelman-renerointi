@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Note from './components/Note'
 import Notification from './components/Notification'
 import noteService from './services/notes'
+
 const Footer = () => {
   const footerStyle = {
     color: 'green',
@@ -17,12 +18,11 @@ const Footer = () => {
   )
 }
 
-
 const App = () => {
   const [notes, setNotes] = useState([])
   const [newNote, setNewNote] = useState('')
   const [showAll, setShowAll] = useState(true)
-  const [errorMessage, setErrorMessage] = useState('some error happened...')
+  const [errorMessage, setErrorMessage] = useState(null) // Change initial state to null
 
   useEffect(() => {
     noteService
@@ -45,23 +45,35 @@ const App = () => {
         setNotes(notes.concat(returnedNote))
         setNewNote('')
       })
+      .catch(error => {
+        setErrorMessage(
+          `Error creating note: ${error.response.data.error}`
+        )
+        setTimeout(() => {
+          setErrorMessage(null)
+        }, 5000)
+      })
   }
+
   const toggleImportanceOf = id => {
     const note = notes.find(n => n.id === id)
     const changedNote = { ...note, important: !note.important }
 
     noteService
-      .update(id, changedNote).then(returnedNote => {
+      .update(id, changedNote)
+      .then(returnedNote => {
         setNotes(notes.map(note => note.id !== id ? note : returnedNote))
       })
       .catch(error => {
-
-        setErrorMessage(
-          `Note '${note.content}' was already removed from server`
-        )
-        setTimeout(() => {
-          setErrorMessage(null)
-        }, 5000)
+        const deletedNote = notes.find(n => n.id === id)
+        if (deletedNote) {
+          setErrorMessage(
+            `Error updating note: ${error.response.data.error}`
+          )
+          setTimeout(() => {
+            setErrorMessage(null)
+          }, 5000)
+        }
         setNotes(notes.filter(n => n.id !== id))
       })
   }
@@ -77,7 +89,7 @@ const App = () => {
   return (
     <div>
       <h1>Notes</h1>
-      <Notification message={errorMessage} />
+      {errorMessage && <Notification message={errorMessage} />} {/* Display error message if it exists */}
       <div>
         <button onClick={() => setShowAll(!showAll)}>
           show {showAll ? 'important' : 'all'}
